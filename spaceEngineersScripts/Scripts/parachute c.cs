@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,8 +53,8 @@ namespace spaceEngineersScripts
 
         //Note: If a parachute is not present, the speed will display as "infinite"  
 
-        //Configuarble Constant 
-        private const double ATM = 0.85;
+        //Configurable constant
+        private const float ATM = 0.85f; // Atmosphere
 
         //(avoid using 1.0 (high accuracy mode). 0.85 gives a more conservative result (you will be 
         // travelling slower than stated). 
@@ -63,11 +62,16 @@ namespace spaceEngineersScripts
 
         //Constants       
         private const int RADMULT = 8; //- radius multiplier, always       
-        private const double REEFLEVEL = 0.6; // reefing level, always       
-        private const double CD = 1.0; //- drag coefficient, always       
+        private const float REEFLEVEL = 0.6f; // reefing level, always       
+        private const int CD = 1; //- drag coefficient, always       
 
 
         //Main Script      
+
+        public void Program()
+        {
+            Runtime.UpdateFrequency = UpdateFrequency.Update1 | UpdateFrequency.Update10;
+        }
 
         private string rawInput = "";
 
@@ -78,50 +82,41 @@ namespace spaceEngineersScripts
                 this.rawInput = argument;
             }
 
-            Runtime.UpdateFrequency = UpdateFrequency.Update1 | UpdateFrequency.Update10;
+            var gravity = SelectGravity(this.rawInput);
 
-            double gravity = SelectGravity(this.rawInput);
+            var gridSize = Me.CubeGrid.GridSize;
 
-            double gridSize = Me.CubeGrid.GridSize;
+            var qty = CountParachutes();
 
-            int qty = CountParachutes();
+            var mass = CalcMass();
 
-            double mass = CalcMass();
+            var parachuteDiameter = ParachuteDiameterCalc(gridSize);
 
-            double parachuteDiameter = ParachuteDiameterCalc(gridSize);
+            var area = AreaCalc(parachuteDiameter);
 
-            double area = AreaCalc(parachuteDiameter);
-
-            double result = TerminalVelocitycalc(mass, gravity, area, qty);
+            var result = TerminalVelocitycalc(mass, gravity, area, qty);
 
             DisplayResult(result);
-
-
         }
 
         private void DisplayResult(double result)
         {
-
-            string output = "Your terminal velocity with\n parachutes deployed will be approx:\n" + result.ToString() + " m/s";
+            var output = $"Your terminal velocity with\n parachutes deployed will be approx:\n{result.ToString()} m/s";
             Echo(output);
 
-            List<IMyTextPanel> panels = new List<IMyTextPanel>();
+            var panels = new List<IMyTextPanel>();
 
-            GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(panels, x => x.CustomName.Contains("Velocity Result"));
+            GridTerminalSystem.GetBlocksOfType(panels, x => x.CustomName.Contains("Velocity Result"));
 
             foreach (var display in panels)
             {
-
                 display.ShowPublicTextOnScreen();
                 display.WritePublicText(output);
             }
         }
 
-
-
         private double SelectGravity(string selection)
         {
-
             switch (selection.ToUpper())
             {
                 case "4": //moons    
@@ -138,37 +133,32 @@ namespace spaceEngineersScripts
                 default:
                     return 9.81;
             }
-
         }
-
-
-
-
 
         private int CountParachutes()
         {
-
-            List<IMyTerminalBlock> parachutes = new List<IMyTerminalBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyParachute>(parachutes);
+            var parachutes = new List<IMyParachute>();
+            GridTerminalSystem.GetBlocksOfType(parachutes);
             return parachutes.Count;
-
         }
 
-
+        /// <remarks>Returns 0.0 instead of NaN when no <seealso cref="IMyShipController"/> is available</remarks>
         private double CalcMass()
         {
-
-            List<IMyShipController> shipControllers = new List<IMyShipController>();
-            GridTerminalSystem.GetBlocksOfType<IMyShipController>(shipControllers);
-            foreach (var item in shipControllers)
+            var mass = double.NaN;
+            var shipControllers = new List<IMyShipController>();
+            GridTerminalSystem.GetBlocksOfType(shipControllers);
+            if (shipControllers.Any())
             {
-                return item.CalculateShipMass().TotalMass;
-
+                mass = shipControllers.First().CalculateShipMass().TotalMass;
             }
-            return 0.0;
+            else
+            {
+                mass = 0.0;
+            }
+
+            return mass;
         }
-
-
 
         private double ParachuteDiameterCalc(double gridSize)
         {
@@ -177,16 +167,12 @@ namespace spaceEngineersScripts
 
         private double AreaCalc(double parachuteDiameter)
         {
-
             return (Math.PI * (Math.Pow(parachuteDiameter / 2.0, 2.0)));
         }
 
         private double TerminalVelocitycalc(double mass, double gravity, double area, int qty)
         {
-
             return Math.Round(Math.Sqrt((mass * gravity) / (area * CD * qty * ATM * 1.225 * 2.5)), 2);
         }
-
-
     }
 }
